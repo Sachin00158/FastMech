@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastMech - On-Road Mechanic Service</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body>
+    <div id="loginScreen" class="screen active">
+        <div class="container">
+            <div class="login-container">
+                <div class="login-header">
+                    <h1>🔧FastMech</h1>
+                    <p>Professional On-Road Mechanic Services</p>
+                </div>
+
+                <div class="user-type-selector">
+                    <button id="customerLoginBtn" class="btn btn--primary user-type-btn active">
+                        👤 Customer Login
+                    </button>
+                    <button id="mechanicLoginBtn" class="btn btn--outline user-type-btn">
+                        🔧 Mechanic Login
+                    </button>
+                </div>
+
+                <form id="phoneLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label class="form-label" for="phoneNumber">Mobile Number</label>
+                        <input type="tel" id="phoneNumber" class="form-control"
+                            placeholder="Enter 10-digit Mobile Number" pattern="[0-9]{10}" required>
+                    </div>
+
+                    <div id="recaptcha-container"></div>
+                    <br>
+
+                    <button type="submit" class="btn btn--primary btn--full-width">Send OTP</button>
+                </form>
+
+                <form id="otpVerificationForm" class="login-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="otpInput" class="form-label">Enter OTP</label>
+                        <input type="text" id="otpInput" class="form-control" maxlength="6"
+                            placeholder="Enter 6-digit OTP" required pattern="[0-9]{6}">
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full-width">Verify OTP</button>
+                    <button type="button" id="resendOTPBtn" class="btn btn--outline btn--full-width mt-2">Resend
+                        OTP</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="vehicleScreen" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <h2>Select Your Vehicle</h2>
+                <button id="logoutBtn" class="btn btn--outline btn--sm">Logout</button>
+            </div>
+
+            <div class="vehicle-selection">
+                <div class="vehicle-type-cards">
+                    <div class="vehicle-card" data-type="2 Wheeler">
+                        <div class="vehicle-icon">🏍</div>
+                        <h3>2 Wheeler</h3>
+                        <p>Motorcycles & Scooters</p>
+                    </div>
+                    <div class="vehicle-card" data-type="4 Wheeler">
+                        <div class="vehicle-icon">🚗</div>
+                        <h3>4 Wheeler</h3>
+                        <p>Cars & Vehicles</p>
+                    </div>
+                </div>
+
+                <div id="vehicleDetails" class="vehicle-details" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label" for="brandSelect">Select Brand</label>
+                        <select id="brandSelect" class="form-control">
+                            <option value="">Choose Brand...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="modelSelect">Select Model</label>
+                        <select id="modelSelect" class="form-control" disabled>
+                            <option value="">Choose Model...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="fuelSelect">Fuel Type</label>
+                        <select id="fuelSelect" class="form-control">
+                            <option value="">Select Fuel Type...</option>
+                        </select>
+                    </div>
+
+                    <button id="proceedToServices" class="btn btn--primary btn--full-width" disabled>
+                        Proceed to Services
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="serviceScreen" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <button id="backToVehicle" class="btn btn--outline btn--sm">← Back</button>
+                <h2>Select Services</h2>
+                <button id="logoutBtn2" class="btn btn--outline btn--sm">Logout</button>
+            </div>
+
+            <div class="selected-vehicle-info">
+                <h3>Vehicle Details</h3>
+                <div id="vehicleInfoDisplay" class="vehicle-info-display"></div>
+            </div>
+
+            <div class="service-categories">
+                <div class="service-category">
+                    <h3 class="category-header" data-category="Regular Maintenance">
+                        🧰 Regular Maintenance <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="category-services" id="Regular Maintenance"></div>
+                </div>
+                <div class="service-category">
+                    <h3 class="category-header" data-category="Engine Services">
+                        🔧 Engine Services <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="category-services" id="Engine Services"></div>
+                </div>
+                <div class="service-category">
+                    <h3 class="category-header" data-category="Electrical Services">
+                        ⚡ Electrical Services <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="category-services" id="Electrical Services"></div>
+                </div>
+                <div class="service-category">
+                    <h3 class="category-header" data-category="Brake Services">
+                        🛑 Brake Services <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="category-services" id="Brake Services"></div>
+                </div>
+                <div class="service-category">
+                    <h3 class="category-header" data-category="Tire Services">
+                        🛞 Tire Services <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="category-services" id="Tire Services"></div>
+                </div>
+                <div class="service-category">
+                    <h3 class="category-header" data-category="AC Services">
+                        ❄ AC Services <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="category-services" id="AC Services"></div>
+                </div>
+                <div class="service-category">
+                    <h3 class="category-header" data-category="Emergency Services">
+                        🚨 Emergency Services <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div class="category-services" id="Emergency Services"></div>
+                </div>
+            </div>
+
+            <div class="selected-services-summary" id="servicesSummary" style="display: none;">
+                <h3>Selected Services</h3>
+                <div id="selectedServicesList"></div>
+                <div class="total-cost">
+                    <strong>Total: ₹<span id="totalCost">0</span></strong>
+                </div>
+                <button id="proceedToBooking" class="btn btn--primary btn--full-width">
+                    Proceed to Booking
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bookingScreen" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <button id="backToServices" class="btn btn--outline btn--sm">← Back</button>
+                <h2>Book Your Service</h2>
+                <button id="logoutBtn3" class="btn btn--outline btn--sm">Logout</button>
+            </div>
+
+            <form id="bookingForm" class="booking-form">
+                <div class="form-group">
+                    <label class="form-label" for="customerName">Full Name</label>
+                    <input type="text" id="customerName" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="customerPhone">Phone Number</label>
+                    <input type="tel" id="customerPhone" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="serviceLocation">Service Location</label>
+                    <textarea id="serviceLocation" class="form-control" rows="3"
+                        placeholder="Address will appear here automatically..." required></textarea>
+
+                    <button type="button" id="getLocationBtn" class="btn btn--outline btn--sm mt-8">
+                        📍 Find Nearby Mechanics
+                    </button>
+
+                    <div id="map"
+                        style="height: 300px; width: 100%; margin-top: 15px; border-radius: 8px; display: none; border: 2px solid #eee;">
+                    </div>
+
+                    <div id="nearbyGaragesList"
+                        style="display: none; margin-top: 15px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f9f9f9;">
+                        <p style="margin: 0 0 10px; font-weight: bold; color: #555;">🛠️ Nearby Garages found:</p>
+                        <div id="garagesContainer"></div>
+                    </div>
+
+                    <div id="selectedMechanicBox"
+                        style="display: none; background: #e3f2fd; padding: 10px; border-radius: 8px; margin-top: 10px; border: 1px solid #2196f3;">
+                        <p style="margin: 0; font-weight: bold; color: #1565c0;">👨‍🔧 Selected: <span
+                                id="mechanicNameDisplay">None</span></p>
+                        <input type="hidden" id="selectedMechanicName">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="serviceDate">Preferred Date</label>
+                    <input type="date" id="serviceDate" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="specialInstructions">Special Instructions (Optional)</label>
+                    <textarea id="specialInstructions" class="form-control" rows="3"
+                        placeholder="Any specific requirements or notes..."></textarea>
+                </div>
+
+                <div class="booking-summary">
+                    <h3>Booking Summary</h3>
+                    <div id="bookingSummaryContent"></div>
+                </div>
+
+                <div class="emergency-booking">
+                    <label class="form-label">
+                        <input type="checkbox" id="emergencyBooking"> Emergency Service (Book Immediately)
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn--primary btn--full-width">Confirm Booking</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mechanicDashboard" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <h2>Mechanic Dashboard</h2>
+                <button id="logoutBtn4" class="btn btn--outline btn--sm">Logout</button>
+            </div>
+
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <h3>Pending Requests</h3>
+                    <div class="stat-number" id="pendingCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Completed Today</h3>
+                    <div class="stat-number" id="completedCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Earnings</h3>
+                    <div class="stat-number">₹<span id="earningsCount">0</span></div>
+                </div>
+            </div>
+
+            <div class="booking-requests">
+                <h3>Service Requests</h3>
+                <div id="bookingRequestsList" class="requests-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="customerDashboard" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <h2>My Bookings</h2>
+                <button id="logoutBtn5" class="btn btn--outline btn--sm">Logout</button>
+            </div>
+
+            <div class="quick-actions">
+                <button id="newBookingBtn" class="btn btn--primary">+ New Booking</button>
+                <button id="emergencyBtn" class="btn btn--outline">🚨 Emergency Service</button>
+            </div>
+
+            <div class="booking-history">
+                <h3>Recent Bookings</h3>
+                <div id="customerBookingsList" class="bookings-list"></div>
+            </div>
+
+            <div class="saved-vehicles">
+                <h3>My Vehicles</h3>
+                <div id="savedVehiclesList" class="vehicles-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmationModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>🎉 Booking Confirmed!</h3>
+            <p>Your service request has been submitted successfully.</p>
+            <div id="bookingConfirmationDetails"></div>
+            <div class="modal-actions">
+                <button id="viewDashboardBtn" class="btn btn--primary">View Dashboard</button>
+                <button id="trackServiceBtn" class="btn btn--outline">Track Service</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+    </div>
+
+    <div id="finalBillModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Complete Job & Send Final Bill</h3>
+            <p>Booking for: <strong id="billCustomerName"></strong></p>
+            <p>Original Quote: ₹<span id="billOriginalCost"></span></p>
+
+            <form id="finalBillForm">
+                <div class="form-group">
+                    <label class="form-label" for="finalCostInput">Final Bill Amount (₹)</label>
+                    <input type="number" id="finalCostInput" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="finalNotes">Notes (e.g., "Added spark plug")</label>
+                    <textarea id="finalNotes" class="form-control" rows="2"></textarea>
+                </div>
+                <input type="hidden" id="finalBillBookingId">
+                <button type="submit" class="btn btn--primary btn--full-width">Send Final Bill</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="paymentModal" class="modal hidden">
+        <div class="modal-content" style="text-align: center;">
+            <h3>Pay Your Bill</h3>
+            <p>Your mechanic has completed the job.</p>
+
+            <div class="booking-summary" style="background-color: var(--color-bg-2);">
+                <p>Mechanic's Notes: <strong id="paymentNotes"></strong></p>
+                <h4>Final Amount Due</h4>
+                <h2 class="text-center text-primary">₹<span id="paymentFinalCost"></span></h2>
+            </div>
+
+            <input type="hidden" id="paymentBookingId">
+
+            <div id="qrCodeContainer" style="display: none; margin: 20px auto;">
+                <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">Scan with GPay / PhonePe / Paytm</p>
+
+                <img id="paymentQrCode" src="" alt="QR Code"
+                    style="width: 200px; height: 200px; border: 1px solid #ddd; padding: 10px; border-radius: 8px;">
+
+                <p style="font-size: 0.8rem; color: #888; margin-top: 5px;">Amount will be autofilled</p>
+            </div>
+
+            <div class="modal-actions" style="justify-content: center; gap: 10px;">
+                <button id="payOnlineBtn" class="btn btn--primary">Show QR Code</button>
+                <button id="payOfflineBtn" class="btn btn--outline">Pay Cash</button>
+
+                <button id="confirmOnlinePaymentBtn" class="btn hidden"
+                    style="background-color: #2ecc71; color: white; border: none; width: 100%;">
+                    ✅ Payment Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOS Sending Modal -->
+    <div id="sosModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 style="color: #e74c3c;">🚨 SENDING SOS 🚨</h2>
+            <p>Getting your precise location...</p>
+            <div id="sosCountdown">3</div>
+            <p>Alerting nearby mechanics...</p>
+            <button id="cancelSosBtn" class="btn btn--outline">Cancel</button>
+        </div>
+    </div>
+    <div id="invoiceModal" class="modal hidden">
+        <div class="modal-content invoice-box">
+            <div class="invoice-header">
+                <div class="invoice-title">🔧 FastMech</div>
+                <div>
+                    <strong>Invoice/Receipt</strong><br>
+                    Date: <span id="invDate"></span><br>
+                    ID: <span id="invId"></span>
+                </div>
+            </div>
+
+            <div class="invoice-details-grid">
+                <div>
+                    <strong>Billed To:</strong><br>
+                    <span id="invName"></span><br>
+                    <span id="invPhone"></span>
+                </div>
+                <div>
+                    <strong>Vehicle Details:</strong><br>
+                    <span id="invVehicle"></span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <strong>Service Description:</strong>
+                <p id="invServices" style="color: #666;"></p>
+                <p><em>Mechanic Note: <span id="invNotes"></span></em></p>
+            </div>
+
+            <div class="invoice-total">
+                <p>Payment Method: <strong id="invMethod" style="text-transform: uppercase;"></strong></p>
+                <h3>Total Paid: ₹<span id="invAmount"></span></h3>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 30px; text-align: center;">
+                <button onclick="window.print()" class="btn btn--primary">🖨️ Print / Download PDF</button>
+                <button id="closeInvoiceBtn" class="btn btn--outline">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="ratingModal" class="modal hidden">
+        <div class="modal-content" style="text-align: center;">
+            <h3>Rate Your Mechanic</h3>
+            <p>How was your service experience?</p>
+
+            <div class="star-rating" id="starContainer">
+                <span data-value="1">★</span>
+                <span data-value="2">★</span>
+                <span data-value="3">★</span>
+                <span data-value="4">★</span>
+                <span data-value="5">★</span>
+            </div>
+
+            <input type="hidden" id="selectedRating" value="0">
+
+            <div class="form-group">
+                <textarea id="reviewText" class="form-control" rows="2"
+                    placeholder="Write a short review (optional)..."></textarea>
+            </div>
+
+            <input type="hidden" id="ratingBookingId">
+
+            <div class="modal-actions" style="justify-content: center;">
+                <button id="submitRatingBtn" class="btn btn--primary">Submit Feedback</button>
+                <button id="skipRatingBtn" class="btn btn--outline">Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
